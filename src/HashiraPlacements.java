@@ -46,8 +46,8 @@ public class HashiraPlacements {
         BigInteger constantTerm = lagrangeAtZero(xVals.subList(0, k), yVals.subList(0, k));
         String resultStr = constantTerm.toString();
         char lastDigit = resultStr.charAt(resultStr.length() - 1);
-
-        System.out.println(lastDigit);
+        int lastDigitInt = lastDigit - '0'; 
+        System.out.println(lastDigitInt);
     }
 
     static BigInteger decodeValue(JsonObject obj) {
