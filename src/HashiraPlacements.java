@@ -6,13 +6,12 @@ import com.google.gson.*;
 public class HashiraPlacements {
 
     public static void main(String[] args) throws Exception {
-        // Check if filename argument is provided
+        
         if (args.length < 1) {
             System.out.println("Usage: java HashiraPlacements <input-file.json>");
             return;
         }
 
-        // Read JSON file from argument
         String filename = args[0];
         BufferedReader br = new BufferedReader(new FileReader(filename));
         StringBuilder sb = new StringBuilder();
@@ -24,10 +23,8 @@ public class HashiraPlacements {
 
         String jsonInput = sb.toString();
 
-        // Parse JSON
         JsonObject root = JsonParser.parseString(jsonInput).getAsJsonObject();
 
-        // Extract n and k
         JsonObject keys = root.getAsJsonObject("keys");
         int n = keys.get("n").getAsInt();
         int k = keys.get("k").getAsInt();
@@ -35,30 +32,31 @@ public class HashiraPlacements {
         List<BigInteger> xVals = new ArrayList<>();
         List<BigInteger> yVals = new ArrayList<>();
 
-        // Extract roots and decode values
         for (int i = 1; i <= n; i++) {
             String key = Integer.toString(i);
-            if (!root.has(key)) {
-                continue;
-            }
-            JsonObject obj = root.getAsJsonObject(key);
-            String baseStr = obj.get("base").getAsString();
-            String valStr = obj.get("value").getAsString();
-            int base = Integer.parseInt(baseStr);
+            if (!root.has(key)) continue;
 
-            BigInteger y = new BigInteger(valStr, base);
-            xVals.add(BigInteger.valueOf(i));  // Use root index as x
+            JsonObject obj = root.getAsJsonObject(key);
+            BigInteger y = decodeValue(obj);
+
+            xVals.add(BigInteger.valueOf(i));
             yVals.add(y);
         }
 
-        // Calculate constant term using Lagrange interpolation at 0
         BigInteger constantTerm = lagrangeAtZero(xVals.subList(0, k), yVals.subList(0, k));
+        String resultStr = constantTerm.toString();
+        char lastDigit = resultStr.charAt(resultStr.length() - 1);
 
-        // Print the constant term
-        System.out.println(constantTerm.toString());
+        System.out.println(lastDigit);
     }
 
-    // Lagrange interpolation at x=0 to find constant term
+    static BigInteger decodeValue(JsonObject obj) {
+        String baseStr = obj.get("base").getAsString();
+        String valStr = obj.get("value").getAsString();
+        int base = Integer.parseInt(baseStr);
+        return new BigInteger(valStr, base);
+    }
+
     static BigInteger lagrangeAtZero(List<BigInteger> x, List<BigInteger> y) {
         int n = x.size();
         BigInteger result = BigInteger.ZERO;
@@ -66,11 +64,18 @@ public class HashiraPlacements {
         for (int i = 0; i < n; i++) {
             BigInteger numerator = BigInteger.ONE;
             BigInteger denominator = BigInteger.ONE;
+            BigInteger xi = x.get(i);
 
             for (int j = 0; j < n; j++) {
                 if (j == i) continue;
-                numerator = numerator.multiply(x.get(j).negate()); // (0 - x_j)
-                denominator = denominator.multiply(x.get(i).subtract(x.get(j)));
+                BigInteger xj = x.get(j);
+                numerator = numerator.multiply(xj.negate());
+                denominator = denominator.multiply(xi.subtract(xj));
+            }
+
+            BigInteger absDenominator = denominator.abs();
+            if (!numerator.mod(absDenominator).equals(BigInteger.ZERO)) {
+                throw new ArithmeticException("Numerator not divisible by denominator exactly.");
             }
 
             BigInteger term = y.get(i).multiply(numerator).divide(denominator);
